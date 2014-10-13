@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>stl viewer</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <style>
+            body {
+                margin: 0px;
+                padding: 0px;
+               overflow: hidden;
+            }
+
+            .stlViewerAndVerifier{
+                margin-top: 10%;
+                margin-left: 10%;
+                width: 570px;
+                height: 420px;
+                border:solid #bababa 2px;
+                border-radius: 5px;
+                background-color: #e1e1e1;
+
+
+            }
+            .warningLog{
+                overflow-y:scroll ;
+                position: relative;
+                margin-top: 5px;
+                margin-left: 10px;
+                width: 550px;
+                height: 90px;
+                border:solid #d1d1d1 1px;
+                border-radius: 5px;
+                background-color: #F2F2F2;
+
+            }
+
+            .warningLogElement{
+                margin-top: 5px;
+                margin-left: 5px;
+                font-family: "Courier New";
+                color: #7b7b7b;
+                font-size: 15px;
+            }
+            .warningLog::-webkit-scrollbar {
+                width: 10px;
+            }
+
+            .warningLog::-webkit-scrollbar-track {
+                -webkit-box-shadow: inset 0 0 7px rgba(0,0,0,0.3);
+                border-radius: 10px;
+            }
+
+            .warningLog::-webkit-scrollbar-thumb {
+                border-radius: 10px;
+                -webkit-box-shadow: inset 0 0 7px rgba(0,0,0,0.5);
+            }
+
+        </style>
+
+    </head>
+    <body>
+
+        <script src="js/three.min.js"></script>
+        <script src="js/OrbitControls.js"></script>
+        <script src="js/detector.js"></script>
+        <script src="js/stats.js"></script>
+
+
+        <script>
+
+        if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+            var   controls, camera, scene, renderer, geometry, material, stats;
+            var mesh = new Array();
+            init();
+            render();
+
+        function init() {
+
+            //camera
+            camera = new THREE.PerspectiveCamera( 100, window.innerWidth/window.innerHeight, 1, 10000  );
+            camera.position.z = 70;
+            camera.position.y =20;
+
+            //orbit controls
+            controls = new THREE.OrbitControls( camera );
+            controls.damping = 0.2;
+            controls.addEventListener( 'change', render );
+
+
+            scene = new THREE.Scene();
+            scene.add( camera );
+
+            //lights
+            var directionalLight = new THREE.DirectionalLight( 0xffffff );
+            directionalLight.position.x = 1;
+            directionalLight.position.y = 1;
+            directionalLight.position.z = 1;
+            directionalLight.position.normalize();
+            scene.add( directionalLight );
+            var directionalLight2 = new THREE.DirectionalLight( 0xffffff );
+            directionalLight2.position.x = -1;
+            directionalLight2.position.y = -1;
+            directionalLight2.position.z = 1;
+            directionalLight2.position.normalize();
+            scene.add( directionalLight2 );
+            var directionalLight3 = new THREE.DirectionalLight( 0xffffff );
+            directionalLight3.position.x = 0;
+            directionalLight3.position.y = 0;
+            directionalLight3.position.z = -1;
+            directionalLight3.position.normalize();
+            scene.add( directionalLight3 );
+
+            // ====================================================================================================
+            // Read , Parse & Validate files here
+            //=====================================================================================================
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function () {
+                    if ( xhr.readyState == 4 ) {
+                        if ( xhr.status == 200 || xhr.status == 0 ) {
+                            var rep = xhr.response; // || xhr.mozResponseArrayBuffer;
+                            console.log(rep);
+
+                             parseStlBinary(rep);  // UNLOCK WHE USE BIN FILE
+                            //parseStl(xhr.responseText); // UNLOCK WHEN USE ASCII FILE
+
+                            //initial camera position
+                            mesh.rotation.x = 5;
+                            mesh.rotation.z = .25;
+
+                            console.log('Done!');
+                        }
+                    }
+                }
+                xhr.onerror = function(e) {
+                    console.log(e);
+                }
+
+                xhr.open( "GET", 'Octocat-v1.stl', true ); // BIN FILE
+                //xhr.open( "GET", 'box.stl', true ); // ASCII FILE
+
+                 xhr.responseType = "arraybuffer";  // UNLOCK WHE USE BIN FILE
+                //xhr.setRequestHeader("Accept","text/plain"); // UNLOCK WHEN USE ASCII FILE
+                //xhr.setRequestHeader("Content-Type","text/plain"); // UNLOCK WHEN USE ASCII FILE
+                //xhr.setRequestHeader('charset', 'x-user-defined'); // UNLOCK WHEN USE ASCII FILE
+
+                xhr.send( null );
+
+            // ====================================================================================================
+            //END  Read , Parse & Validate files here
+            //=====================================================================================================
+
+
+
+            // divForStlView container wich include all stl html/css
+            var divForStlView = document.createElement('div')
+            divForStlView.className = 'stlViewerAndVerifier'
+
+            var warningLog = document.createElement('div')
+            warningLog.className = 'warningLog'
+
+
+            // render
+            renderer = new THREE.WebGLRenderer({ antialias: false });
+            renderer.setSize( 550,300 )
+            renderer.setClearColorHex( 0xF2F2F2, 1 );
+
+            renderer.domElement.style.position = 'relative';
+            renderer.domElement.style.border = 'dashed';
+            renderer.domElement.style.borderWidth='1px';
+            renderer.domElement.style.borderColor='#d1d1d1';
+            renderer.domElement.style.marginLeft='10px';
+            renderer.domElement.style.marginTop='10px';
+
+
+
+
+            //fps stats
+            stats = new Stats();
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.marginLeft='15px';
+            stats.domElement.style.marginTop='15px';
+
+            divForStlView.appendChild(stats.domElement);
+            divForStlView.appendChild(renderer.domElement);
+
+            //adding error messages
+            for(var i =0 ; i<20; i++){
+                var warningLogElement = document.createElement('div')
+                warningLogElement.className = 'warningLogElement';
+                warningLogElement.innerHTML = "- Warning message" + i;
+                warningLog.appendChild( warningLogElement);
+            }
+
+            divForStlView.appendChild( warningLog);
+            document.body.appendChild( divForStlView );
+
+           animate();
+
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            stats.update();
+            controls.update();
+
+        }
+
+        function render() {
+            renderer.render( scene, camera );
+        }
+
+
+        // Notes:
+        // - STL file format: http://en.wikipedia.org/wiki/STL_(file_format)
+        // - 80 byte unused header
+        // - All binary STLs are assumed to be little endian, as per wiki doc
+        var parseStlBinary = function(stl) {
+            var geo = new THREE.Geometry();
+            var dv = new DataView(stl, 80); // 80 == unused header
+            var isLittleEndian = true;
+            var triangles = dv.getUint32(0, isLittleEndian);
+
+            // console.log('arraybuffer length:  ' + stl.byteLength);
+            // console.log('number of triangles: ' + triangles);
+
+            var offset = 4;
+            for (var i = 0; i < triangles; i++) {
+                // Get the normal for this triangle
+                var normal = new THREE.Vector3(
+                        dv.getFloat32(offset, isLittleEndian),
+                        dv.getFloat32(offset+4, isLittleEndian),
+                        dv.getFloat32(offset+8, isLittleEndian)
+                );
+                offset += 12;
+
+                // Get all 3 vertices for this triangle
+                for (var j = 0; j < 3; j++) {
+                    geo.vertices.push(
+                            new THREE.Vector3(
+                                    dv.getFloat32(offset, isLittleEndian),
+                                    dv.getFloat32(offset+4, isLittleEndian),
+                                    dv.getFloat32(offset+8, isLittleEndian)
+                            )
+                    );
+                    offset += 12
+                }
+
+                // there's also a Uint16 "attribute byte count" that we
+                // don't need, it should always be zero.
+                offset += 2;
+
+                // Create a new face for from the vertices and the normal
+                geo.faces.push(new THREE.Face3(i*3, i*3+1, i*3+2, normal));
+            }
+
+            // The binary STL I'm testing with seems to have all
+            // zeroes for the normals, unlike its ASCII counterpart.
+            // We can use three.js to compute the normals for us, though,
+            // once we've assembled our geometry. This is a relatively
+            // expensive operation, but only needs to be done once.
+            geo.computeFaceNormals();
+
+            mesh = new THREE.Mesh(
+                    geo,
+                    new THREE.MeshLambertMaterial({
+                                overdraw:true,
+                                color: 0x67B1E6,
+                                shading: THREE.FlatShading
+                            }
+                    ));
+
+
+
+            scene.add(mesh);
+
+            stl = null;
+        };
+
+        var parseStl = function(stl) {
+            var state = '';
+            var lines = stl.split('\n');
+            var geo = new THREE.Geometry();
+            var name, parts, line, normal, done, vertices = [];
+            var vCount = 0;
+            stl = null;
+
+            for (var len = lines.length, i = 0; i < len; i++) {
+                if (done) {
+                    break;
+                }
+                line = trim(lines[i]);
+                parts = line.split(' ');
+                switch (state) {
+                    case '':
+                        if (parts[0] !== 'solid') {
+                            console.error(line);
+                            console.error('Invalid state "' + parts[0] + '", should be "solid"');
+                            return;
+                        } else {
+                            name = parts[1];
+                            state = 'solid';
+                        }
+                        break;
+                    case 'solid':
+                        if (parts[0] !== 'facet' || parts[1] !== 'normal') {
+                            console.error(line);
+                            console.error('Invalid state "' + parts[0] + '", should be "facet normal"');
+                            return;
+                        } else {
+                            normal = [
+                                parseFloat(parts[2]),
+                                parseFloat(parts[3]),
+                                parseFloat(parts[4])
+                            ];
+                            state = 'facet normal';
+                        }
+                        break;
+                    case 'facet normal':
+                        if (parts[0] !== 'outer' || parts[1] !== 'loop') {
+                            console.error(line);
+                            console.error('Invalid state "' + parts[0] + '", should be "outer loop"');
+                            return;
+                        } else {
+                            state = 'vertex';
+                        }
+                        break;
+                    case 'vertex':
+                        if (parts[0] === 'vertex') {
+                            geo.vertices.push(new THREE.Vector3(
+                                    parseFloat(parts[1]),
+                                    parseFloat(parts[2]),
+                                    parseFloat(parts[3])
+                            ));
+                        } else if (parts[0] === 'endloop') {
+                            geo.faces.push( new THREE.Face3( vCount*3, vCount*3+1, vCount*3+2, new THREE.Vector3(normal[0], normal[1], normal[2]) ) );
+                            vCount++;
+                            state = 'endloop';
+                        } else {
+                            console.error(line);
+                            console.error('Invalid state "' + parts[0] + '", should be "vertex" or "endloop"');
+                            return;
+                        }
+                        break;
+                    case 'endloop':
+                        if (parts[0] !== 'endfacet') {
+                            console.error(line);
+                            console.error('Invalid state "' + parts[0] + '", should be "endfacet"');
+                            return;
+                        } else {
+                            state = 'endfacet';
+                        }
+                        break;
+                    case 'endfacet':
+                        if (parts[0] === 'endsolid') {
+                            //mesh = new THREE.Mesh( geo, new THREE.MeshNormalMaterial({overdraw:true}));
+                            mesh = new THREE.Mesh(
+                                    geo,
+                                    new THREE.MeshLambertMaterial({
+                                                overdraw:true,
+                                                color: 0xD9DADE,
+                                                shading: THREE.FlatShading
+                                            }
+                                    ));
+                            scene.add(mesh);
+                            done = true;
+                        } else if (parts[0] === 'facet' && parts[1] === 'normal') {
+                            normal = [
+                                parseFloat(parts[2]),
+                                parseFloat(parts[3]),
+                                parseFloat(parts[4])
+                            ];
+                            if (vCount % 1000 === 0) {
+                                console.log(normal);
+                            }
+                            state = 'facet normal';
+                        } else {
+                            console.error(line);
+                            console.error('Invalid state "' + parts[0] + '", should be "endsolid" or "facet normal"');
+                            return;
+                        }
+                        break;
+                    default:
+                        console.error('Invalid state "' + state + '"');
+                        break;
+                }
+            }
+        };
+
+        var trim  = function (str) {
+            str = str.replace(/^\s+/, '');
+            for (var i = str.length - 1; i >= 0; i--) {
+                if (/\S/.test(str.charAt(i))) {
+                    str = str.substring(0, i + 1);
+                    break;
+                }
+            }
+            return str;
+        }
+
+        </script>
+
+
+    </body>
+</html>
