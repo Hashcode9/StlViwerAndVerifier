@@ -1,10 +1,11 @@
-<!doctype html>
-<html lang="en">
-    <head>
-        <title>stl viewer</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-        <style>
+﻿@{
+    ViewBag.Title = "StlViewer"; 
+}
+
+<script src="/Scripts/detector.js"></script>
+<script src="/Scripts/stats.js"></script>
+
+<style>
             body {
                 margin: 0px;
                 padding: 0px;
@@ -58,101 +59,78 @@
 
         </style>
 
-    </head>
-    <body>
+        <script src="Scripts/jQuery/jquery-1.11.1.js" type="text/javascript"></script>
+        <script src="Scripts/Three/three.js"></script>
+        <script src="Scripts/stats.js"></script>
+        <script src="Scripts/detector.js"></script>
 
-        <script src="js/three.min.js"></script>
-        <script src="js/OrbitControls.js"></script>
-        <script src="js/detector.js"></script>
-        <script src="js/stats.js"></script>
+<body>
 
 
-        <script>
+   <script>
+        var camera, scene, renderer,
+                geometry, material, mesh, light1, stats,
+                MeshcenterX, MeshcenterY, MeshcenterZ;
 
-        if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
-            var   controls, camera, scene, renderer, geometry, material, stats;
-            var mesh = new Array();
-            init();
-            render();
+        init();
+        animate();
+
 
         function init() {
 
-            //camera
-            camera = new THREE.PerspectiveCamera( 100, window.innerWidth/window.innerHeight, 1, 10000  );
-            camera.position.z = 70;
-            camera.position.y =20;
-
-            //orbit controls
-            controls = new THREE.OrbitControls( camera );
-            controls.damping = 0.2;
-            controls.addEventListener( 'change', render );
-
-
+            //Detector.addGetWebGLMessage();
             scene = new THREE.Scene();
-            scene.add( camera );
 
-            //lights
-            var directionalLight = new THREE.DirectionalLight( 0xffffff );
-            directionalLight.position.x = 1;
-            directionalLight.position.y = 1;
+            camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 1, 10000);
+            camera.position.z = 70;
+            camera.position.y = 20;
+            scene.add(camera);
+
+            var directionalLight = new THREE.DirectionalLight(0xffffff);
+            directionalLight.position.x = 0;
+            directionalLight.position.y = 0;
             directionalLight.position.z = 1;
             directionalLight.position.normalize();
-            scene.add( directionalLight );
-            var directionalLight2 = new THREE.DirectionalLight( 0xffffff );
-            directionalLight2.position.x = -1;
-            directionalLight2.position.y = -1;
-            directionalLight2.position.z = 1;
-            directionalLight2.position.normalize();
-            scene.add( directionalLight2 );
-            var directionalLight3 = new THREE.DirectionalLight( 0xffffff );
-            directionalLight3.position.x = 0;
-            directionalLight3.position.y = 0;
-            directionalLight3.position.z = -1;
-            directionalLight3.position.normalize();
-            scene.add( directionalLight3 );
+            scene.add(directionalLight);
 
-            // ====================================================================================================
-            // Read , Parse & Validate files here
-            //=====================================================================================================
-                var xhr = new XMLHttpRequest();
-                xhr.onreadystatechange = function () {
-                    if ( xhr.readyState == 4 ) {
-                        if ( xhr.status == 200 || xhr.status == 0 ) {
-                            var rep = xhr.response; // || xhr.mozResponseArrayBuffer;
-                            console.log(rep);
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4) {
+                    if (xhr.status == 200 || xhr.status == 0) {
+                        var rep = xhr.response; // || xhr.mozResponseArrayBuffer;
+                        console.log(rep);
 
-                             parseStlBinary(rep);  // UNLOCK WHE USE BIN FILE
-                            //parseStl(xhr.responseText); // UNLOCK WHEN USE ASCII FILE
+                        //  parseStlBinary(rep);  // UNLOCK WHE USE BIN FILE
+                        parseStl(xhr.responseText); // UNLOCK WHEN USE ASCII FILE
 
-                            //initial camera position
-                            mesh.rotation.x = 5;
-                            mesh.rotation.z = .25;
+                        var val = 10;
+                        MeshcenterX = val;
+                        MeshcenterY = val;
+                        MeshcenterZ = val;
+                        mesh.position.set(MeshcenterX, MeshcenterY, MeshcenterZ);
+                        mesh.geometry.applyMatrix(new THREE.Matrix4().makeTranslation(-MeshcenterX, -MeshcenterY, -MeshcenterZ));
 
-                            console.log('Done!');
-                        }
+                        mesh.rotation.x = 5;
+                        mesh.rotation.z = .25;
+                        console.log('done parsing');
                     }
                 }
-                xhr.onerror = function(e) {
-                    console.log(e);
-                }
+            }
+            xhr.onerror = function (e) {
+                console.log(e);
+            }
 
-                xhr.open( "GET", 'Octocat-v1.stl', true ); // BIN FILE
-                //xhr.open( "GET", 'box.stl', true ); // ASCII FILE
-
-                 xhr.responseType = "arraybuffer";  // UNLOCK WHE USE BIN FILE
-                //xhr.setRequestHeader("Accept","text/plain"); // UNLOCK WHEN USE ASCII FILE
-                //xhr.setRequestHeader("Content-Type","text/plain"); // UNLOCK WHEN USE ASCII FILE
-                //xhr.setRequestHeader('charset', 'x-user-defined'); // UNLOCK WHEN USE ASCII FILE
-
-                xhr.send( null );
-
-            // ====================================================================================================
-            //END  Read , Parse & Validate files here
-            //=====================================================================================================
+            // xhr.open( "GET", 'Octocat-v1.stl', true ); // BIN FILE
+            xhr.open("GET", '~/Models/box.stl', true); // ASCII FILE
 
 
+            // xhr.responseType = "arraybuffer";  // UNLOCK WHE USE BIN FILE
+            xhr.setRequestHeader("Accept", "text/plain"); // UNLOCK WHEN USE ASCII FILE
+            xhr.setRequestHeader("Content-Type", "text/plain"); // UNLOCK WHEN USE ASCII FILE
+            xhr.setRequestHeader('charset', 'x-user-defined'); // UNLOCK WHEN USE ASCII FILE
 
-            // divForStlView container wich include all stl html/css
+            xhr.send(null);
+
             var divForStlView = document.createElement('div')
             divForStlView.className = 'stlViewerAndVerifier'
 
@@ -160,54 +138,57 @@
             warningLog.className = 'warningLog'
 
 
-            // render
-            renderer = new THREE.WebGLRenderer({ antialias: false });
-            renderer.setSize( 550,300 )
-            renderer.setClearColorHex( 0xF2F2F2, 1 );
-
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(550, 300);
             renderer.domElement.style.position = 'relative';
             renderer.domElement.style.border = 'dashed';
-            renderer.domElement.style.borderWidth='1px';
-            renderer.domElement.style.borderColor='#d1d1d1';
-            renderer.domElement.style.marginLeft='10px';
-            renderer.domElement.style.marginTop='10px';
+            renderer.domElement.style.borderWidth = '1px';
+            renderer.domElement.style.borderColor = '#d1d1d1';
+            renderer.domElement.style.marginLeft = '10px';
+            renderer.domElement.style.marginTop = '10px';
+            renderer.domElement.style.background = '#F2F2F2';
 
-
-
-
-            //fps stats
             stats = new Stats();
             stats.domElement.style.position = 'absolute';
-            stats.domElement.style.marginLeft='15px';
-            stats.domElement.style.marginTop='15px';
+            stats.domElement.style.marginLeft = '15px';
+            stats.domElement.style.marginTop = '15px';
 
             divForStlView.appendChild(stats.domElement);
             divForStlView.appendChild(renderer.domElement);
 
-            //adding error messages
-            for(var i =0 ; i<20; i++){
+            for (var i = 0 ; i < 20; i++) {
                 var warningLogElement = document.createElement('div')
                 warningLogElement.className = 'warningLogElement';
                 warningLogElement.innerHTML = "- Warning message" + i;
-                warningLog.appendChild( warningLogElement);
+                warningLog.appendChild(warningLogElement);
             }
 
-            divForStlView.appendChild( warningLog);
-            document.body.appendChild( divForStlView );
+            divForStlView.appendChild(warningLog);
 
-           animate();
+            document.body.appendChild(divForStlView);
 
         }
 
         function animate() {
+
+            // note: three.js includes requestAnimationFrame shim
             requestAnimationFrame(animate);
+            render();
             stats.update();
-            controls.update();
 
         }
 
         function render() {
-            renderer.render( scene, camera );
+
+            //mesh.rotation.x += 0.01;
+            if (mesh) {
+                mesh.rotation.z += 0.008;
+
+            }
+            //light1.position.z -= 1;
+
+            renderer.render(scene, camera);
+
         }
 
 
@@ -215,7 +196,7 @@
         // - STL file format: http://en.wikipedia.org/wiki/STL_(file_format)
         // - 80 byte unused header
         // - All binary STLs are assumed to be little endian, as per wiki doc
-        var parseStlBinary = function(stl) {
+        var parseStlBinary = function (stl) {
             var geo = new THREE.Geometry();
             var dv = new DataView(stl, 80); // 80 == unused header
             var isLittleEndian = true;
@@ -229,8 +210,8 @@
                 // Get the normal for this triangle
                 var normal = new THREE.Vector3(
                         dv.getFloat32(offset, isLittleEndian),
-                        dv.getFloat32(offset+4, isLittleEndian),
-                        dv.getFloat32(offset+8, isLittleEndian)
+                        dv.getFloat32(offset + 4, isLittleEndian),
+                        dv.getFloat32(offset + 8, isLittleEndian)
                 );
                 offset += 12;
 
@@ -239,8 +220,8 @@
                     geo.vertices.push(
                             new THREE.Vector3(
                                     dv.getFloat32(offset, isLittleEndian),
-                                    dv.getFloat32(offset+4, isLittleEndian),
-                                    dv.getFloat32(offset+8, isLittleEndian)
+                                    dv.getFloat32(offset + 4, isLittleEndian),
+                                    dv.getFloat32(offset + 8, isLittleEndian)
                             )
                     );
                     offset += 12
@@ -251,7 +232,7 @@
                 offset += 2;
 
                 // Create a new face for from the vertices and the normal
-                geo.faces.push(new THREE.Face3(i*3, i*3+1, i*3+2, normal));
+                geo.faces.push(new THREE.Face3(i * 3, i * 3 + 1, i * 3 + 2, normal));
             }
 
             // The binary STL I'm testing with seems to have all
@@ -263,11 +244,14 @@
 
             mesh = new THREE.Mesh(
                     geo,
+                    // new THREE.MeshNormalMaterial({
+                    //     overdraw:true
+                    // }
                     new THREE.MeshLambertMaterial({
-                                overdraw:true,
-                                color: 0x67B1E6,
-                                shading: THREE.FlatShading
-                            }
+                        overdraw: true,
+                        color: 0xc6c6c6,
+                        shading: THREE.FlatShading
+                    }
                     ));
 
 
@@ -277,7 +261,7 @@
             stl = null;
         };
 
-        var parseStl = function(stl) {
+        var parseStl = function (stl) {
             var state = '';
             var lines = stl.split('\n');
             var geo = new THREE.Geometry();
@@ -333,7 +317,7 @@
                                     parseFloat(parts[3])
                             ));
                         } else if (parts[0] === 'endloop') {
-                            geo.faces.push( new THREE.Face3( vCount*3, vCount*3+1, vCount*3+2, new THREE.Vector3(normal[0], normal[1], normal[2]) ) );
+                            geo.faces.push(new THREE.Face3(vCount * 3, vCount * 3 + 1, vCount * 3 + 2, new THREE.Vector3(normal[0], normal[1], normal[2])));
                             vCount++;
                             state = 'endloop';
                         } else {
@@ -357,10 +341,10 @@
                             mesh = new THREE.Mesh(
                                     geo,
                                     new THREE.MeshLambertMaterial({
-                                                overdraw:true,
-                                                color: 0xD9DADE,
-                                                shading: THREE.FlatShading
-                                            }
+                                        overdraw: true,
+                                        color: 0xaa0000,
+                                        shading: THREE.FlatShading
+                                    }
                                     ));
                             scene.add(mesh);
                             done = true;
@@ -387,7 +371,8 @@
             }
         };
 
-        var trim  = function (str) {
+
+        function trim(str) {
             str = str.replace(/^\s+/, '');
             for (var i = str.length - 1; i >= 0; i--) {
                 if (/\S/.test(str.charAt(i))) {
@@ -397,9 +382,7 @@
             }
             return str;
         }
+    </script>
 
-        </script>
 
-
-    </body>
-</html>
+</body>
